@@ -6,7 +6,12 @@ import torch
 import os
 import sys
 from sklearn.metrics import mean_absolute_error, mean_squared_error
-from scipy.stats import pearsonr
+try:
+    from sklearn.metrics import root_mean_squared_error
+except ImportError:
+    def root_mean_squared_error(y_true, y_pred):
+        return mean_squared_error(y_true, y_pred, squared=False)
+from scipy.stats import pearsonr as scipy_pearsonr
 
 # This function handles CTRL-L C interrupt, erasing unused folders and terminating the program
 def handle_signal(signum, stackframe):
@@ -18,21 +23,36 @@ def handle_signal(signum, stackframe):
 
 
 # Code tested on script_sort_predictions_temp.ipynb
-def create_prediction_tables(path):
+def _safe_scipy_pearsonr(y_true, y_pred):
+    y_true = np.asarray(y_true, dtype=float)
+    y_pred = np.asarray(y_pred, dtype=float)
+    if len(y_true) < 2 or np.std(y_true) == 0 or np.std(y_pred) == 0:
+        return np.nan
+    return scipy_pearsonr(y_true, y_pred)[0]
+
+
+def _nanmean_or_nan(values):
+    values = np.asarray(values, dtype=float)
+    if values.size == 0 or np.isnan(values).all():
+        return np.nan
+    return np.nanmean(values)
+
+
+def create_prediction_tables(path, data_dir="data"):
     df_preds_fold1 = pd.read_csv(path + '/predictions_fold1.csv')
     df_preds_fold2 = pd.read_csv(path + '/predictions_fold2.csv')
     df_preds_fold1 = df_preds_fold1.rename(columns={'Unnamed: 0' : 'index_pred', '0' : 'valence_pred', '1' : 'arousal_pred'})
     df_preds_fold2 = df_preds_fold2.rename(columns={'Unnamed: 0' : 'index_pred', '0' : 'valence_pred', '1' : 'arousal_pred'})
     
     # Import original dataset files to df
-    df_dataset_fold1 = pd.read_csv('data/full_dataset_fold1.csv',sep='\t',
+    df_dataset_fold1 = pd.read_csv(os.path.join(data_dir, 'full_dataset_fold1.csv'),sep='\t',
                     quotechar='"',
                     engine='python', 
                     quoting=csv.QUOTE_NONE,
                     escapechar='\\',
                     keep_default_na=False,
                     dtype={'index':np.int32,'text':str,'valence':np.float64, 'arousal':np.float64})
-    df_dataset_fold2 = pd.read_csv('data/full_dataset_fold2.csv',sep='\t',
+    df_dataset_fold2 = pd.read_csv(os.path.join(data_dir, 'full_dataset_fold2.csv'),sep='\t',
                     quotechar='"',
                     engine='python', 
                     quoting=csv.QUOTE_NONE,
@@ -121,30 +141,34 @@ def create_prediction_tables(path):
     mae_aro_array = []
     r_val_array = []
     r_aro_array = []
+    ds_array = []
 
     for ds in words_ds_list:
         # language
         l = dataset_langs[ds]
-        lang_array.append(l)
         df_temp = full_df[full_df.dataset_of_origin == ds]
+        if df_temp.empty:
+            continue
+        ds_array.append(ds)
+        lang_array.append(l)
         # How to calculate MSE, MAE for valence and arousal for one of the datasets
-        mse_valence = mean_squared_error(df_temp.valence_true, df_temp.valence_pred, squared=False)
-        mse_arousal = mean_squared_error(df_temp.arousal_true, df_temp.arousal_pred, squared=False)
+        mse_valence = root_mean_squared_error(df_temp.valence_true, df_temp.valence_pred)
+        mse_arousal = root_mean_squared_error(df_temp.arousal_true, df_temp.arousal_pred)
         mae_valence = mean_absolute_error(df_temp.valence_true, df_temp.valence_pred)
         mae_arousal = mean_absolute_error(df_temp.arousal_true, df_temp.arousal_pred)
-        r_valence = pearsonr(df_temp.valence_true, df_temp.valence_pred)
-        r_arousal = pearsonr(df_temp.arousal_true, df_temp.arousal_pred)
+        r_valence = _safe_scipy_pearsonr(df_temp.valence_true, df_temp.valence_pred)
+        r_arousal = _safe_scipy_pearsonr(df_temp.arousal_true, df_temp.arousal_pred)
        
         # Append values to its arrays
         mse_val_array.append(round(mse_valence,4))
         mse_aro_array.append(round(mse_arousal,4))
         mae_val_array.append(round(mae_valence,4))
         mae_aro_array.append(round(mae_arousal,4))
-        r_val_array.append(round(r_valence[0],4))
-        r_aro_array.append(round(r_arousal[0],4))
+        r_val_array.append(round(r_valence,4))
+        r_aro_array.append(round(r_arousal,4))
 
     # Arrays to put in the df
-    ds_array = np.array(words_ds_list).reshape(len(words_ds_list), 1)
+    ds_array = np.array(ds_array).reshape(len(ds_array), 1)
     lang_array = np.array(lang_array).reshape(len(lang_array), 1)
     mse_val_array = np.array(mse_val_array).reshape(len(mse_val_array), 1)
     mse_aro_array = np.array(mse_aro_array).reshape(len(mse_aro_array), 1)
@@ -163,12 +187,12 @@ def create_prediction_tables(path):
     def df_style(val):
         return "font-weight: bold"
 
-    v_mse_mean = np.mean(np.array(df.Valence.MSE, dtype=np.float))
-    v_mae_mean = np.mean(np.array(df.Valence.MAE, dtype=np.float))
-    v_r_mean = np.mean(np.array(df.Valence.r, dtype=np.float))
-    a_mse_mean = np.mean(np.array(df.Arousal.MSE, dtype=np.float))
-    a_mae_mean = np.mean(np.array(df.Arousal.MAE, dtype=np.float))
-    a_r_mean = np.mean(np.array(df.Arousal.r, dtype=np.float))
+    v_mse_mean = _nanmean_or_nan(df.Valence.MSE)
+    v_mae_mean = _nanmean_or_nan(df.Valence.MAE)
+    v_r_mean = _nanmean_or_nan(df.Valence.r)
+    a_mse_mean = _nanmean_or_nan(df.Arousal.MSE)
+    a_mae_mean = _nanmean_or_nan(df.Arousal.MAE)
+    a_r_mean = _nanmean_or_nan(df.Arousal.r)
     df.loc[df.shape[0]] = ['Overall','', round(v_mse_mean,4), round(v_mae_mean,4), round(v_r_mean,4), round(a_mse_mean,4), round(a_mae_mean,4), round(a_r_mean,4)]
     last_row = pd.IndexSlice[df.index[df.index == 22], :]
     df.to_pickle(path + "/table1.pkl")
@@ -182,30 +206,34 @@ def create_prediction_tables(path):
     mae_aro_array = []
     r_val_array = []
     r_aro_array = []
+    ds_array = []
 
     for ds in sent_ds_list:
         # language
         l = dataset_langs[ds]
-        lang_array.append(l)
         #get sub-df
         df_temp = full_df[full_df.dataset_of_origin == ds]
+        if df_temp.empty:
+            continue
+        ds_array.append(ds)
+        lang_array.append(l)
         # How to calculate RMSE, MAE for valence and arousal for one of the datasets
-        mse_valence = mean_squared_error(df_temp.valence_true, df_temp.valence_pred, squared=False)
-        mse_arousal = mean_squared_error(df_temp.arousal_true, df_temp.arousal_pred, squared=False)
+        mse_valence = root_mean_squared_error(df_temp.valence_true, df_temp.valence_pred)
+        mse_arousal = root_mean_squared_error(df_temp.arousal_true, df_temp.arousal_pred)
         mae_valence = mean_absolute_error(df_temp.valence_true, df_temp.valence_pred)
         mae_arousal = mean_absolute_error(df_temp.arousal_true, df_temp.arousal_pred)
-        r_valence = pearsonr(df_temp.valence_true, df_temp.valence_pred)
-        r_arousal = pearsonr(df_temp.arousal_true, df_temp.arousal_pred)
+        r_valence = _safe_scipy_pearsonr(df_temp.valence_true, df_temp.valence_pred)
+        r_arousal = _safe_scipy_pearsonr(df_temp.arousal_true, df_temp.arousal_pred)
         # Append values to its arrays
         mse_val_array.append(round(mse_valence,4))
         mse_aro_array.append(round(mse_arousal,4))
         mae_val_array.append(round(mae_valence,4))
         mae_aro_array.append(round(mae_arousal,4))
-        r_val_array.append(round(r_valence[0],4))
-        r_aro_array.append(round(r_arousal[0],4))
+        r_val_array.append(round(r_valence,4))
+        r_aro_array.append(round(r_arousal,4))
 
     # Arrays to put in the df
-    ds_array = np.array(sent_ds_list).reshape(len(sent_ds_list), 1)
+    ds_array = np.array(ds_array).reshape(len(ds_array), 1)
     lang_array = np.array(lang_array).reshape(len(lang_array), 1)
     mse_val_array = np.array(mse_val_array).reshape(len(mse_val_array), 1)
     mse_aro_array = np.array(mse_aro_array).reshape(len(mse_aro_array), 1)
@@ -220,12 +248,12 @@ def create_prediction_tables(path):
 
     df = pd.DataFrame(matrix, columns= header) #, index=ind
 
-    v_mse_mean = np.mean(np.array(df.Valence.MSE, dtype=np.float))
-    v_mae_mean = np.mean(np.array(df.Valence.MAE, dtype=np.float))
-    v_r_mean = np.mean(np.array(df.Valence.r, dtype=np.float))
-    a_mse_mean = np.mean(np.array(df.Arousal.MSE, dtype=np.float))
-    a_mae_mean = np.mean(np.array(df.Arousal.MAE, dtype=np.float))
-    a_r_mean = np.mean(np.array(df.Arousal.r, dtype=np.float))
+    v_mse_mean = _nanmean_or_nan(df.Valence.MSE)
+    v_mae_mean = _nanmean_or_nan(df.Valence.MAE)
+    v_r_mean = _nanmean_or_nan(df.Valence.r)
+    a_mse_mean = _nanmean_or_nan(df.Arousal.MSE)
+    a_mae_mean = _nanmean_or_nan(df.Arousal.MAE)
+    a_r_mean = _nanmean_or_nan(df.Arousal.r)
     df.loc[df.shape[0]] = ['Overall','', round(v_mse_mean,4), round(v_mae_mean,4), round(v_r_mean,4), round(a_mse_mean,4), round(a_mae_mean,4), round(a_r_mean,4)]
     last_row = pd.IndexSlice[df.index[df.index == 12], :]
     df.to_pickle(path + "/table2.pkl")

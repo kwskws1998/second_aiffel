@@ -18,6 +18,8 @@ class MyDataset(Dataset):
             self.tokenizer = XLMRobertaTokenizer.from_pretrained(checkpoint)
         elif(checkpoint == 'xlm-roberta-base'): 
             self.tokenizer = XLMRobertaTokenizer.from_pretrained(checkpoint)
+        else:
+            self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
 
         df = pd.read_csv(filename,sep='\t',
                 quotechar='"',

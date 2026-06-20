@@ -50,6 +50,7 @@ def _build_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("model", choices=MODEL_CHOICES)
     parser.add_argument("loss", choices=LOSS_CHOICES)
+    parser.add_argument("--checkpoint-override", default=None)
     parser.add_argument("--gaze-fusion", choices=["none", "add", "concat"], default="none")
     parser.add_argument("--use-gaze-add", action="store_true")
     parser.add_argument("--use-gaze-concat", action="store_true")
@@ -150,7 +151,7 @@ def main():
     except ValueError as exc:
         parser.error(str(exc))
 
-    checkpoint = MODEL_TO_CHECKPOINT[args.model]
+    checkpoint = args.checkpoint_override or MODEL_TO_CHECKPOINT[args.model]
     timestamp, preds_dir = _create_run_dir()
 
     batch_size_distil = args.batch_size_distil if args.batch_size_distil is not None else args.batch_size
@@ -187,6 +188,7 @@ def main():
         "loss_function": args.loss,
         "path": preds_dir,
         "checkpoint": checkpoint,
+        "checkpoint_override": args.checkpoint_override,
         "data_dir": args.data_dir,
         "maxlen": args.maxlen,
         **params,
@@ -206,7 +208,7 @@ def main():
     training_fold1(args.model, args.loss, timestamp, params, dataset, preds_dir, checkpoint, gaze_config=gaze_config)
     print("\n\n\n------------ NOW ON FOLD 2 -------------- \n\n\n")
     training_fold2(args.model, args.loss, timestamp, params, dataset, preds_dir, checkpoint, gaze_config=gaze_config)
-    create_prediction_tables(preds_dir)
+    create_prediction_tables(preds_dir, data_dir=args.data_dir)
 
 
 if __name__ == "__main__":
