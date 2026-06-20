@@ -36,9 +36,9 @@ class MyDataset(Dataset):
     def __getitem__(self, idx):
         item = { }
         aux = self.tokenizer(self.texts[idx], max_length=self.maxlen, truncation=True, padding=False)
-        item['input_ids'] = torch.tensor(aux['input_ids'])
-        item['attention_mask'] = torch.tensor(aux['attention_mask'])
-        item['labels'] = torch.tensor( [ self.valence[idx], self.arousal[idx] ] )
+        item['input_ids'] = torch.tensor(aux['input_ids'], dtype=torch.long)
+        item['attention_mask'] = torch.tensor(aux['attention_mask'], dtype=torch.long)
+        item['labels'] = torch.tensor([self.valence[idx], self.arousal[idx]], dtype=torch.float32)
 
         return item
 
