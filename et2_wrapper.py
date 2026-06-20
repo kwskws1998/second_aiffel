@@ -1,5 +1,7 @@
 import os
 import re
+import shutil
+from urllib.request import Request, urlopen
 
 import numpy as np
 import torch
@@ -16,6 +18,8 @@ except ImportError:
 WINDOW_SIZE = 512
 OVERLAP = 50
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEFAULT_ET2_REPO = "skboy/et_prediction_2"
+DEFAULT_ET2_FILENAME = "et_predictor2_seed123.safetensors"
 
 
 class _RobertaRegressionModel(torch.nn.Module):
@@ -53,10 +57,39 @@ class FixationsPredictor_2:
             candidate = path + ext
             if os.path.isfile(candidate):
                 return self._load_from_file(candidate)
+        downloaded = self._download_checkpoint(path)
+        if downloaded:
+            return self._load_from_file(downloaded)
         raise FileNotFoundError(
             f"[et2_wrapper] checkpoint not found: {path}[.safetensors/.pt/.bin]\n"
             "Set --et2-checkpoint or ET2_CHECKPOINT_PATH."
         )
+
+    def _download_checkpoint(self, path):
+        destination = path if path.endswith((".safetensors", ".pt", ".bin")) else path + ".safetensors"
+        repo_id = os.environ.get("ET2_HF_REPO", DEFAULT_ET2_REPO)
+        filename = os.environ.get("ET2_HF_FILENAME", DEFAULT_ET2_FILENAME)
+        url = f"https://huggingface.co/{repo_id}/resolve/main/{filename}"
+        os.makedirs(os.path.dirname(destination) or ".", exist_ok=True)
+        print(f"[et2_wrapper] checkpoint missing; downloading: {url}")
+        req = Request(
+            url,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (X11; Linux x86_64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/124.0.0.0 Safari/537.36"
+                )
+            },
+        )
+        try:
+            with urlopen(req, timeout=120) as response, open(destination, "wb") as out_file:
+                shutil.copyfileobj(response, out_file)
+        except Exception:
+            if os.path.isfile(destination):
+                os.remove(destination)
+            raise
+        return destination if os.path.isfile(destination) else None
 
     def _load_from_file(self, path):
         if path.endswith(".safetensors"):

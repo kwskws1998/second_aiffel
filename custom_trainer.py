@@ -2,7 +2,6 @@ from torch import Tensor, import_ir_module, nn
 import torch
 from transformers import Trainer
 import numpy as np
-import robust_loss_pytorch
 from torch.nn.modules.loss import _Loss
 from torch.overrides import (has_torch_function, has_torch_function_unary, has_torch_function_variadic, handle_torch_function)
 from typing import Optional
@@ -12,6 +11,18 @@ from yaml import warnings
 from utils import pearsonr
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
+
+
+def _load_robust_loss_pytorch():
+    try:
+        import robust_loss_pytorch
+    except ImportError as exc:
+        raise ImportError(
+            "robust_loss_pytorch is required only for robust losses. "
+            "Install it with: pip install importlib_resources && "
+            "pip install git+https://github.com/jonbarron/robust_loss_pytorch.git"
+        ) from exc
+    return robust_loss_pytorch
 
 
 class CustomTrainerMSE(Trainer):
@@ -148,6 +159,7 @@ class CustomTrainerRobustCCC(Trainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.num_dims = 2 # 1, 2??
+        robust_loss_pytorch = _load_robust_loss_pytorch()
         self.adaptive = robust_loss_pytorch.adaptive.AdaptiveLossFunction(
             num_dims=self.num_dims, 
             float_dtype=np.float32, 
@@ -278,6 +290,7 @@ class CustomTrainerRobust(Trainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.num_dims = 2 
+        robust_loss_pytorch = _load_robust_loss_pytorch()
         self.adaptive = robust_loss_pytorch.adaptive.AdaptiveLossFunction(
             num_dims=self.num_dims, 
             float_dtype=np.float32, 
@@ -432,6 +445,5 @@ class CustomTrainerRobust(Trainer):
         
         
         return (loss, outputs) if return_outputs else loss
-
 
 

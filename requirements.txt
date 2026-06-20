@@ -1,0 +1,16 @@
+torch
+transformers
+datasets
+evaluate
+accelerate
+scipy
+scikit-learn
+pandas
+numpy
+tqdm
+safetensors
+sentencepiece
+protobuf
+pyyaml
+importlib_resources
+git+https://github.com/jonbarron/robust_loss_pytorch.git
