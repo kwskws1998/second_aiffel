@@ -125,6 +125,21 @@ def _create_run_dir():
     return timestamp, preds_dir
 
 
+def _require_dataset_files(data_dir):
+    expected = [
+        os.path.join(data_dir, "full_dataset_fold1.csv"),
+        os.path.join(data_dir, "full_dataset_fold2.csv"),
+    ]
+    missing = [path for path in expected if not os.path.isfile(path)]
+    if missing:
+        raise FileNotFoundError(
+            "Missing dataset file(s):\n"
+            + "\n".join(f"  - {path}" for path in missing)
+            + "\nBuild no-IEMOCAP data with:\n"
+            + "  python setup_no_iemocap_data.py --data-dir data --output-dir data_no_iemocap --seed 42"
+        )
+
+
 def main():
     signal(2, handle_signal)
     parser = _build_parser()
@@ -181,6 +196,7 @@ def main():
     with open(f"{preds_dir}/training_parameters.json", "w") as output_file:
         json.dump(run_parameters, output_file)
 
+    _require_dataset_files(args.data_dir)
     filename_1 = os.path.join(args.data_dir, "full_dataset_fold1.csv")
     filename_2 = os.path.join(args.data_dir, "full_dataset_fold2.csv")
     split_1 = MyDataset(filename=filename_1, checkpoint=checkpoint, maxlen=args.maxlen)
