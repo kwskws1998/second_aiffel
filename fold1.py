@@ -4,6 +4,7 @@ from metrics import compute_metrics
 import pandas as pd
 from model_factory import build_model
 from training_args_compat import build_training_arguments
+from trainer_compat import build_trainer
 
 
     
@@ -53,7 +54,7 @@ def training_fold1(model, loss, timestamp, params, dataset, preds_dir, checkpoin
     data_collator = DataCollatorWithPadding(train_data.tokenizer)
     
     if(loss == 'mse'):
-        trainer1 = CustomTrainerMSE(
+        trainer1 = build_trainer(CustomTrainerMSE,
         model,
         training_args,
         data_collator=data_collator,
@@ -65,7 +66,7 @@ def training_fold1(model, loss, timestamp, params, dataset, preds_dir, checkpoin
         #optimizers=(optimizer, self.lr_scheduler)
         )
     elif(loss == 'ccc'):
-        trainer1 = CustomTrainerCCC(
+        trainer1 = build_trainer(CustomTrainerCCC,
         model,
         training_args,
         data_collator=data_collator,
@@ -75,7 +76,7 @@ def training_fold1(model, loss, timestamp, params, dataset, preds_dir, checkpoin
         compute_metrics=compute_metrics,
         )
     elif(loss == 'robust'):
-        trainer1 = CustomTrainerRobust(
+        trainer1 = build_trainer(CustomTrainerRobust,
         model,
         training_args,
         data_collator=data_collator,
@@ -91,7 +92,7 @@ def training_fold1(model, loss, timestamp, params, dataset, preds_dir, checkpoin
         # params = list(model.parameters()) + list(adaptive.parameters())
         # optimizer = torch.optim.Adam(params, lr=0.01) # No TrainingArguments tenho lr= 2e-5
     elif(loss == 'mse+ccc'): 
-        trainer1 = CustomTrainerMSE_CCC(
+        trainer1 = build_trainer(CustomTrainerMSE_CCC,
         model,
         training_args,
         data_collator=data_collator,
@@ -101,7 +102,7 @@ def training_fold1(model, loss, timestamp, params, dataset, preds_dir, checkpoin
         compute_metrics=compute_metrics,
         )
     elif(loss == 'robust+ccc'): 
-        trainer1 = CustomTrainerRobustCCC(
+        trainer1 = build_trainer(CustomTrainerRobustCCC,
         model,
         training_args,
         data_collator=data_collator,

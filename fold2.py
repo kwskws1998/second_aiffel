@@ -4,6 +4,7 @@ from metrics import compute_metrics
 import pandas as pd
 from model_factory import build_model
 from training_args_compat import build_training_arguments
+from trainer_compat import build_trainer
 
 
     
@@ -55,7 +56,7 @@ def training_fold2(model, loss, timestamp, params, dataset, preds_dir, checkpoin
     data_collator = DataCollatorWithPadding(train_data.tokenizer)
     
     if(loss == 'mse'):
-        trainer2 = CustomTrainerMSE(
+        trainer2 = build_trainer(CustomTrainerMSE,
         model,
         training_args,
         data_collator=data_collator,
@@ -65,7 +66,7 @@ def training_fold2(model, loss, timestamp, params, dataset, preds_dir, checkpoin
         compute_metrics=compute_metrics,
         )
     elif(loss == 'ccc'):
-        trainer2 = CustomTrainerCCC(
+        trainer2 = build_trainer(CustomTrainerCCC,
         model,
         training_args,
         data_collator=data_collator,
@@ -75,7 +76,7 @@ def training_fold2(model, loss, timestamp, params, dataset, preds_dir, checkpoin
         compute_metrics=compute_metrics,
         )
     elif(loss == 'robust'):
-        trainer2 = CustomTrainerRobust(
+        trainer2 = build_trainer(CustomTrainerRobust,
         model,
         training_args,
         data_collator=data_collator,
@@ -85,7 +86,7 @@ def training_fold2(model, loss, timestamp, params, dataset, preds_dir, checkpoin
         compute_metrics=compute_metrics,
         )
     elif(loss == 'mse+ccc'): 
-        trainer2 = CustomTrainerMSE_CCC(
+        trainer2 = build_trainer(CustomTrainerMSE_CCC,
         model,
         training_args,
         data_collator=data_collator,
@@ -95,7 +96,7 @@ def training_fold2(model, loss, timestamp, params, dataset, preds_dir, checkpoin
         compute_metrics=compute_metrics,
         )
     elif(loss == 'robust+ccc'): 
-        trainer2 = CustomTrainerRobustCCC(
+        trainer2 = build_trainer(CustomTrainerRobustCCC,
         model,
         training_args,
         data_collator=data_collator,
