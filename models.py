@@ -47,8 +47,16 @@ class DistilBertForSequenceClassificationSig(DistilBertForSequenceClassification
         return_dict: Optional[bool] = None,
     ) -> Union[SequenceClassifierOutput, Tuple[torch.Tensor, ...]]:
         
-        # ret = super.forward(input_ids, attention_mask, head_mask, inputs_embeds, labels, output_attentions, output_hidden_states, return_dict)
-        ret = super(DistilBertForSequenceClassificationSig, self).forward(input_ids, attention_mask, head_mask, inputs_embeds, labels, output_attentions, output_hidden_states, return_dict)
+        ret = super(DistilBertForSequenceClassificationSig, self).forward(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            labels=labels,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
         ret.logits = self.sigmoid(ret.logits) # Uncomment to use any sigmoid
         
         # ret.logits = torch.relu(ret.logits) # Uncomment to use ReLu w threshold
@@ -84,8 +92,18 @@ class RobertaForSequenceClassificationSig(RobertaForSequenceClassification):
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple[torch.Tensor], SequenceClassifierOutput]:
         
-        # ret = super.forward(input_ids, attention_mask, token_type_ids, position_ids, head_mask, inputs_embeds, labels, output_attentions, output_hidden_states, return_dict)
-        ret = super(RobertaForSequenceClassificationSig, self).forward(input_ids, attention_mask, token_type_ids, position_ids, head_mask, inputs_embeds, labels, output_attentions, output_hidden_states, return_dict)
+        ret = super(RobertaForSequenceClassificationSig, self).forward(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            labels=labels,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
         ret.logits = self.sigmoid(ret.logits) # Uncomment to use any sigmoid
         
         # ret.logits = torch.relu(ret.logits) # Uncomment to use ReLu w threshold
