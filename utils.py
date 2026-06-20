@@ -38,6 +38,59 @@ def _nanmean_or_nan(values):
     return np.nanmean(values)
 
 
+def _calculate_va_metrics(df):
+    metrics = {"num_samples": int(len(df))}
+    for dim in ["valence", "arousal"]:
+        y_true = df[f"{dim}_true"]
+        y_pred = df[f"{dim}_pred"]
+        mse = float(mean_squared_error(y_true, y_pred))
+        metrics[f"mse_{dim}"] = mse
+        metrics[f"rmse_{dim}"] = float(np.sqrt(mse))
+        metrics[f"mae_{dim}"] = float(mean_absolute_error(y_true, y_pred))
+        metrics[f"pearson_corr_{dim}"] = _safe_scipy_pearsonr(y_true, y_pred)
+    return metrics
+
+
+def _json_safe_metrics(metrics):
+    safe = {}
+    for key, value in metrics.items():
+        if isinstance(value, (np.integer, np.floating)):
+            value = value.item()
+        if isinstance(value, float) and np.isnan(value):
+            value = None
+        safe[key] = value
+    return safe
+
+
+def _write_out_of_fold_metrics(path, df_join):
+    overall_metrics = _calculate_va_metrics(df_join)
+    pd.DataFrame([overall_metrics]).to_csv(os.path.join(path, "overall_metrics.csv"), index=False)
+    with open(os.path.join(path, "overall_metrics.json"), "w") as output_file:
+        json.dump(_json_safe_metrics(overall_metrics), output_file, indent=2)
+
+    dataset_rows = []
+    for dataset_name, df_dataset in df_join.groupby("dataset_of_origin"):
+        row = {"dataset_of_origin": dataset_name}
+        row.update(_calculate_va_metrics(df_dataset))
+        dataset_rows.append(row)
+    pd.DataFrame(dataset_rows).sort_values("dataset_of_origin").to_csv(
+        os.path.join(path, "dataset_metrics.csv"), index=False
+    )
+
+
+def _join_dataset_and_predictions(dataset_df, predictions_df, prediction_filename):
+    if len(dataset_df) != len(predictions_df):
+        raise ValueError(
+            f"{prediction_filename} has {len(predictions_df)} rows, "
+            f"but the matching dataset fold has {len(dataset_df)} rows. "
+            "Use the same full_dataset_fold*.csv files that were used during training."
+        )
+    return pd.concat(
+        [dataset_df.reset_index(drop=True), predictions_df.reset_index(drop=True)],
+        axis=1,
+    )
+
+
 def create_prediction_tables(path, data_dir="data"):
     df_preds_fold1 = pd.read_csv(path + '/predictions_fold1.csv')
     df_preds_fold2 = pd.read_csv(path + '/predictions_fold2.csv')
@@ -65,14 +118,18 @@ def create_prediction_tables(path, data_dir="data"):
     # Merge the original dataset and the predicted values in the same dataframe
 
     # Fold 1
-    df_fold1_join = pd.concat([df_dataset_fold1, df_preds_fold1], axis=1) # Join original dataset and correspondent predictions
+    df_fold1_join = _join_dataset_and_predictions(
+        df_dataset_fold1, df_preds_fold1, "predictions_fold1.csv"
+    )
     df_fold1_join = df_fold1_join.drop(columns=['index_pred']) # Drop extra index column
     cols = df_fold1_join.columns.tolist() # Re-order columns
     cols = ['index', 'text', 'dataset_of_origin', 'valence_true', 'arousal_true', 'valence_pred', 'arousal_pred']
     df_fold1_join = df_fold1_join[cols]
 
     # Fold 2
-    df_fold2_join = pd.concat([df_dataset_fold2, df_preds_fold2], axis=1) # Join original dataset and correspondent predictions
+    df_fold2_join = _join_dataset_and_predictions(
+        df_dataset_fold2, df_preds_fold2, "predictions_fold2.csv"
+    )
     df_fold2_join = df_fold2_join.drop(columns=['index_pred']) # Drop extra index column
     cols = df_fold2_join.columns.tolist() # Re-order columns
     cols = ['index', 'text', 'dataset_of_origin', 'valence_true', 'arousal_true', 'valence_pred', 'arousal_pred']
@@ -82,6 +139,8 @@ def create_prediction_tables(path, data_dir="data"):
 
     # Sort dataframe by index
     df_join = df_join.sort_values('index')
+    df_join.to_csv(os.path.join(path, "all_predictions.csv"), index=False)
+    _write_out_of_fold_metrics(path, df_join)
     
     # A list with the name of all the datasets used 
     datasets_list = list(df_join.dataset_of_origin.unique())
