@@ -1,8 +1,9 @@
-from transformers import TrainingArguments, DataCollatorWithPadding
+from transformers import DataCollatorWithPadding
 from custom_trainer import CustomTrainerMSE, CustomTrainerCCC, CustomTrainerRobust, CustomTrainerMSE_CCC, CustomTrainerRobustCCC
 from metrics import compute_metrics
 import pandas as pd
 from model_factory import build_model
+from training_args_compat import build_training_arguments
 
 
     
@@ -24,7 +25,7 @@ def training_fold1(model, loss, timestamp, params, dataset, preds_dir, checkpoin
     val_data = dataset[0][1]
     model = build_model(model, checkpoint, gaze_config=gaze_config, tokenizer=train_data.tokenizer)
         
-    training_args = TrainingArguments(
+    training_args = build_training_arguments(
         output_dir=output_dir1,
         logging_dir='logs/logs1',
         logging_steps=200,
