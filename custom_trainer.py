@@ -30,7 +30,7 @@ class CustomTrainerMSE(Trainer):
         super().__init__(*args, **kwargs)
 
     
-    def compute_loss(self, model, inputs, return_outputs=False):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         labels = inputs.get("labels") # Vou buscar as labels à variavel inputs e guardo em 'labels'
         inputs.pop('labels', None) # remover 'labels' da var inputs para não ser passado ao modelo
 
@@ -54,7 +54,7 @@ class CustomTrainerCCC(Trainer):
 
 
     # This functions overrides class Trainer's compute_loss function
-    def compute_loss(self, model, inputs, return_outputs=False):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         labels = inputs.get("labels") 
         inputs.pop('labels', None) 
 
@@ -105,7 +105,7 @@ class CustomTrainerMSE_CCC(Trainer):
 
 
     # This functions overrides class Trainer's compute_loss function
-    def compute_loss(self, model, inputs, return_outputs=False):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         labels = inputs.get("labels") # Vou buscar as labels à variavel inputs e guardo em 'labels'
         inputs.pop('labels', None) # remover 'labels' da var inputs para não ser passado ao modelo
 
@@ -178,7 +178,7 @@ class CustomTrainerRobustCCC(Trainer):
         
 
     # From robust
-    def training_step(self, model, inputs):
+    def training_step(self, model, inputs, num_items_in_batch=None):
         """
         Perform a training step on a batch of inputs.
         Subclass and override to inject custom behavior.
@@ -236,7 +236,7 @@ class CustomTrainerRobustCCC(Trainer):
     
     
     # This functions overrides class Trainer's compute_loss function
-    def compute_loss(self, model, inputs, return_outputs=False):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         #Common to both
         labels = inputs.get("labels") # Vou buscar as labels à variavel inputs e guardo em 'labels'
         inputs.pop('labels', None) # remover 'labels' da var inputs para não ser passado ao modelo
@@ -301,7 +301,7 @@ class CustomTrainerRobust(Trainer):
         # Comentei o optimizer acima porque caso contrário estaria a user Adam em vez de AdamW como nos outros casos.
 
 
-    def training_step(self, model, inputs):
+    def training_step(self, model, inputs, num_items_in_batch=None):
         """
         Perform a training step on a batch of inputs.
         Subclass and override to inject custom behavior.
@@ -359,7 +359,7 @@ class CustomTrainerRobust(Trainer):
 
 
     # This functions overrides class Trainer's compute_loss function
-    def compute_loss(self, model, inputs, return_outputs=False):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         labels = inputs.get("labels") # Vou buscar as labels à variavel inputs e guardo em 'labels'
         inputs.pop('labels', None) # remover 'labels' da var inputs para não ser passado ao modelo
 
@@ -445,5 +445,4 @@ class CustomTrainerRobust(Trainer):
         
         
         return (loss, outputs) if return_outputs else loss
-
 
