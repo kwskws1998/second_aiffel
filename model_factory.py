@@ -1,5 +1,10 @@
 from models import DistilBertForSequenceClassificationSig, XLMRobertaForSequenceClassificationSig
-from gaze_models import GazeAddForSequenceRegression, GazeConcatForSequenceRegression
+from gaze_models import (
+    GazeAddForSequenceRegression,
+    GazeConcatForSequenceRegression,
+    GazePooledHeadForSequenceRegression,
+    GazeWordConcatForSequenceRegression,
+)
 
 
 def build_model(model_name, checkpoint, gaze_config=None, tokenizer=None):
@@ -21,6 +26,28 @@ def build_model(model_name, checkpoint, gaze_config=None, tokenizer=None):
 
     if gaze_fusion == "concat":
         return GazeConcatForSequenceRegression(
+            model_name=model_name,
+            checkpoint=checkpoint,
+            tokenizer=tokenizer,
+            et2_checkpoint_path=gaze_config.get("et2_checkpoint_path"),
+            features_used=gaze_config.get("features_used", [1, 1, 1, 1, 1]),
+            fp_dropout=tuple(gaze_config.get("fp_dropout", [0.0, 0.3])),
+            load_fixation_model=gaze_config.get("load_fixation_model", True),
+        )
+
+    if gaze_fusion == "word_concat":
+        return GazeWordConcatForSequenceRegression(
+            model_name=model_name,
+            checkpoint=checkpoint,
+            tokenizer=tokenizer,
+            et2_checkpoint_path=gaze_config.get("et2_checkpoint_path"),
+            features_used=gaze_config.get("features_used", [1, 1, 1, 1, 1]),
+            fp_dropout=tuple(gaze_config.get("fp_dropout", [0.0, 0.3])),
+            load_fixation_model=gaze_config.get("load_fixation_model", True),
+        )
+
+    if gaze_fusion == "pooled_head":
+        return GazePooledHeadForSequenceRegression(
             model_name=model_name,
             checkpoint=checkpoint,
             tokenizer=tokenizer,

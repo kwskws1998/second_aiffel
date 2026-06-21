@@ -51,7 +51,11 @@ def _build_parser():
     parser.add_argument("model", choices=MODEL_CHOICES)
     parser.add_argument("loss", choices=LOSS_CHOICES)
     parser.add_argument("--checkpoint-override", default=None)
-    parser.add_argument("--gaze-fusion", choices=["none", "add", "concat"], default="none")
+    parser.add_argument(
+        "--gaze-fusion",
+        choices=["none", "add", "concat", "word_concat", "pooled_head"],
+        default="none",
+    )
     parser.add_argument("--use-gaze-add", action="store_true")
     parser.add_argument("--use-gaze-concat", action="store_true")
     parser.add_argument("--et2-checkpoint", default=None)
