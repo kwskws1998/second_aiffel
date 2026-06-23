@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.DS_Store
 
 # C extensions
 *.so
@@ -129,10 +130,17 @@ dmypy.json
 data/
 Output Directory/
 model/
-data/
+data_no_iemocap/
 Preds/
 wandb/
 logs/
+hf_checks/
+artifacts/
+result_packages/
+*.log
+*.pt
+*.safetensors
+*.zip
 
 # Pyre type checker
 .pyre/

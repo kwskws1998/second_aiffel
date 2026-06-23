@@ -15,6 +15,7 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 MODEL_CHOICES = ["distilbert", "xlmroberta-base", "xlmroberta-large"]
 LOSS_CHOICES = ["mse", "ccc", "robust", "mse+ccc", "robust+ccc"]
+ET_MODEL_CHOICES = ["et2", "emotion_et", "emotion-et"]
 MODEL_TO_CHECKPOINT = {
     "distilbert": "distilbert-base-multilingual-cased",
     "xlmroberta-base": "xlm-roberta-base",
@@ -46,6 +47,13 @@ def _parse_fp_dropout(raw_value):
     return parsed
 
 
+def _normalize_et_model_type(raw_value):
+    aliases = {
+        "emotion-et": "emotion_et",
+    }
+    return aliases.get(raw_value or "et2", raw_value or "et2")
+
+
 def _build_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("model", choices=MODEL_CHOICES)
@@ -59,6 +67,8 @@ def _build_parser():
     parser.add_argument("--use-gaze-add", action="store_true")
     parser.add_argument("--use-gaze-concat", action="store_true")
     parser.add_argument("--et2-checkpoint", default=None)
+    parser.add_argument("--et-model-type", choices=ET_MODEL_CHOICES, default="et2")
+    parser.add_argument("--et-model-id", default=None)
     parser.add_argument("--features-used", type=_parse_features_used, default=[1, 1, 1, 1, 1])
     parser.add_argument("--fp-dropout", type=_parse_fp_dropout, default=[0.0, 0.3])
     parser.add_argument("--gaze-add-scale", type=float, default=0.05)
@@ -103,6 +113,8 @@ def _resolve_gaze_fusion(args):
 
 
 def _validate_args(args):
+    args.et_model_type = _normalize_et_model_type(args.et_model_type)
+
     if args.maxlen <= 0:
         raise ValueError("--maxlen must be > 0.")
     if args.train_epochs <= 0:
@@ -181,6 +193,8 @@ def main():
     gaze_config = {
         "gaze_fusion": gaze_fusion,
         "et2_checkpoint_path": args.et2_checkpoint,
+        "et_model_type": args.et_model_type,
+        "et_model_id": args.et_model_id,
         "features_used": args.features_used,
         "fp_dropout": args.fp_dropout,
         "gaze_add_scale": args.gaze_add_scale,

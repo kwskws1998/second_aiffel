@@ -253,3 +253,29 @@ To fine-tune the model please run the file `train_model.py`.
 It expects two arguments:
 - Model: **distilbert** or **xlmroberta-base** or **xlmroberta-large**
 - Loss function: **mse** or **ccc** or **robust** or **mse+ccc** or **robust+ccc**
+
+### Emotion ET gaze fusion
+
+The default gaze predictor is still ET2. To switch only the ET predictor to the
+emotion-specific model hosted on Hugging Face, set `--et-model-type emotion_et`
+and pass the repo id with `--et-model-id`.
+
+TRT-only DistilBERT MSE run on the no-IEMOCAP split:
+
+```bash
+python train_model.py distilbert mse \
+  --data-dir data_no_iemocap \
+  --gaze-fusion concat \
+  --et-model-type emotion_et \
+  --et-model-id skboy/emotion_et_model \
+  --features-used 0,0,0,1,0 \
+  --fp-dropout 0.1,0.3 \
+  --batch-size 16 \
+  --maxlen 200 \
+  --optim adamw_torch \
+  --seed 42 \
+  --save-total-limit 1
+```
+
+Feature flag order is `nFix,FFD,GPT,TRT,fixProp`. The hyphenated alias
+`emotion-et` is also accepted.

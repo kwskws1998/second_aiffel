@@ -22,6 +22,8 @@ def build_model(model_name, checkpoint, gaze_config=None, tokenizer=None):
             gaze_add_scale=gaze_config.get("gaze_add_scale", 0.05),
             train_gaze_add_scale=gaze_config.get("train_gaze_add_scale", False),
             load_fixation_model=gaze_config.get("load_fixation_model", True),
+            et_model_type=gaze_config.get("et_model_type", "et2"),
+            et_model_id=gaze_config.get("et_model_id"),
         )
 
     if gaze_fusion == "concat":
@@ -33,6 +35,8 @@ def build_model(model_name, checkpoint, gaze_config=None, tokenizer=None):
             features_used=gaze_config.get("features_used", [1, 1, 1, 1, 1]),
             fp_dropout=tuple(gaze_config.get("fp_dropout", [0.0, 0.3])),
             load_fixation_model=gaze_config.get("load_fixation_model", True),
+            et_model_type=gaze_config.get("et_model_type", "et2"),
+            et_model_id=gaze_config.get("et_model_id"),
         )
 
     if gaze_fusion == "word_concat":
@@ -44,6 +48,8 @@ def build_model(model_name, checkpoint, gaze_config=None, tokenizer=None):
             features_used=gaze_config.get("features_used", [1, 1, 1, 1, 1]),
             fp_dropout=tuple(gaze_config.get("fp_dropout", [0.0, 0.3])),
             load_fixation_model=gaze_config.get("load_fixation_model", True),
+            et_model_type=gaze_config.get("et_model_type", "et2"),
+            et_model_id=gaze_config.get("et_model_id"),
         )
 
     if gaze_fusion == "pooled_head":
@@ -55,6 +61,8 @@ def build_model(model_name, checkpoint, gaze_config=None, tokenizer=None):
             features_used=gaze_config.get("features_used", [1, 1, 1, 1, 1]),
             fp_dropout=tuple(gaze_config.get("fp_dropout", [0.0, 0.3])),
             load_fixation_model=gaze_config.get("load_fixation_model", True),
+            et_model_type=gaze_config.get("et_model_type", "et2"),
+            et_model_id=gaze_config.get("et_model_id"),
         )
 
     if model_name == "distilbert":

@@ -9,6 +9,7 @@ pandas
 numpy
 tqdm
 safetensors
+huggingface_hub
 sentencepiece
 protobuf
 pyyaml

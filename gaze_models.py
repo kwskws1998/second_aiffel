@@ -8,6 +8,13 @@ from transformers.modeling_outputs import SequenceClassifierOutput
 from models import DistilBertForSequenceClassificationSig, XLMRobertaForSequenceClassificationSig
 
 
+def _normalize_et_model_type(raw_value):
+    aliases = {
+        "emotion-et": "emotion_et",
+    }
+    return aliases.get(raw_value or "et2", raw_value or "et2")
+
+
 def _build_baseline_model(model_name, checkpoint):
     if model_name == "distilbert":
         return DistilBertForSequenceClassificationSig.from_pretrained(checkpoint, num_labels=2)
@@ -27,6 +34,8 @@ class GazeBaseForSequenceRegression(nn.Module):
         fp_dropout=(0.0, 0.3),
         max_fix_cache_size=20000,
         load_fixation_model=True,
+        et_model_type="et2",
+        et_model_id=None,
     ):
         super().__init__()
         self.model_name = model_name
@@ -35,6 +44,8 @@ class GazeBaseForSequenceRegression(nn.Module):
         self.tokenizer = tokenizer
         self.hidden_size = self.config.hidden_size
         self.num_labels = 2
+        self.et_model_type = _normalize_et_model_type(et_model_type)
+        self.et_model_id = et_model_id
 
         flags = features_used or [1, 1, 1, 1, 1]
         self.feature_indices = [idx for idx, enabled in enumerate(flags) if int(enabled) == 1]
@@ -52,9 +63,16 @@ class GazeBaseForSequenceRegression(nn.Module):
         )
         self.norm_layer_fix = nn.LayerNorm(self.hidden_size)
 
-        self.fp_model = self._load_et2_predictor(et2_checkpoint_path) if load_fixation_model else None
+        self.fp_model = self._load_fixation_predictor(et2_checkpoint_path) if load_fixation_model else None
         self.fixation_cache = OrderedDict()
         self.max_fix_cache_size = max_fix_cache_size
+
+    def _load_fixation_predictor(self, et2_checkpoint_path):
+        if self.et_model_type == "et2":
+            return self._load_et2_predictor(et2_checkpoint_path)
+        if self.et_model_type == "emotion_et":
+            return self._load_emotion_et_predictor(self.et_model_id or et2_checkpoint_path)
+        raise ValueError(f"Unknown et_model_type: {self.et_model_type}")
 
     def _load_et2_predictor(self, et2_checkpoint_path):
         try:
@@ -68,6 +86,24 @@ class GazeBaseForSequenceRegression(nn.Module):
             modelTokenizer=self.tokenizer,
             remap=False,
             checkpoint_path=et2_checkpoint_path,
+        )
+        if hasattr(fp_model, "model"):
+            fp_model.model.eval()
+            for param in fp_model.model.parameters():
+                param.requires_grad = False
+        return fp_model
+
+    def _load_emotion_et_predictor(self, et_model_id):
+        try:
+            from emotion_et_wrapper import EmotionEtFixationsPredictor
+        except ImportError as exc:
+            raise ImportError(
+                "Could not import EmotionEtFixationsPredictor. Install huggingface_hub/safetensors/transformers."
+            ) from exc
+
+        fp_model = EmotionEtFixationsPredictor(
+            modelTokenizer=self.tokenizer,
+            model_id=et_model_id,
         )
         if hasattr(fp_model, "model"):
             fp_model.model.eval()
@@ -184,6 +220,8 @@ class GazeAddForSequenceRegression(GazeBaseForSequenceRegression):
         gaze_add_scale=0.05,
         train_gaze_add_scale=False,
         load_fixation_model=True,
+        et_model_type="et2",
+        et_model_id=None,
     ):
         skip_fixed_zero_gaze = not train_gaze_add_scale and float(gaze_add_scale) == 0.0
         super().__init__(
@@ -195,6 +233,8 @@ class GazeAddForSequenceRegression(GazeBaseForSequenceRegression):
             fp_dropout=fp_dropout,
             max_fix_cache_size=max_fix_cache_size,
             load_fixation_model=load_fixation_model and not skip_fixed_zero_gaze,
+            et_model_type=et_model_type,
+            et_model_id=et_model_id,
         )
         self.skip_fixed_zero_gaze = skip_fixed_zero_gaze
         gaze_add_scale = torch.tensor(float(gaze_add_scale))
@@ -260,6 +300,8 @@ class GazeConcatForSequenceRegression(GazeBaseForSequenceRegression):
         fp_dropout=(0.0, 0.3),
         max_fix_cache_size=20000,
         load_fixation_model=True,
+        et_model_type="et2",
+        et_model_id=None,
     ):
         super().__init__(
             model_name=model_name,
@@ -270,6 +312,8 @@ class GazeConcatForSequenceRegression(GazeBaseForSequenceRegression):
             fp_dropout=fp_dropout,
             max_fix_cache_size=max_fix_cache_size,
             load_fixation_model=load_fixation_model,
+            et_model_type=et_model_type,
+            et_model_id=et_model_id,
         )
         self.eye_start = nn.Parameter(torch.zeros(self.hidden_size))
         self.eye_end = nn.Parameter(torch.zeros(self.hidden_size))
@@ -425,6 +469,8 @@ class GazePooledHeadForSequenceRegression(GazeBaseForSequenceRegression):
         fp_dropout=(0.0, 0.3),
         max_fix_cache_size=20000,
         load_fixation_model=True,
+        et_model_type="et2",
+        et_model_id=None,
     ):
         super().__init__(
             model_name=model_name,
@@ -435,6 +481,8 @@ class GazePooledHeadForSequenceRegression(GazeBaseForSequenceRegression):
             fp_dropout=fp_dropout,
             max_fix_cache_size=max_fix_cache_size,
             load_fixation_model=load_fixation_model,
+            et_model_type=et_model_type,
+            et_model_id=et_model_id,
         )
         p_1, p_2 = fp_dropout
         pooled_feature_size = len(self.feature_indices) * 3
