@@ -15,10 +15,11 @@ except ImportError:
     snapshot_download = None
 
 
-DEFAULT_REPO_ID = "skboy/emotion_et_model"
-DEFAULT_WEIGHT_NAME = "et_predictor2_iitb_scalezero_seed42.safetensors"
+DEFAULT_REPO_ID = "skboy/emotion_et_2nd_model"
+DEFAULT_WEIGHT_NAME = "et_predictor2_iitb_sa1_sa2_lr2e5_len256_seed123.safetensors"
 FEATURE_NAMES = ["nFix", "FFD", "GPT", "TRT", "fixProp"]
 WINDOW_SIZE = 512
+MODEL_SUBDIR_ENV = "EMOTION_ET_MODEL_SUBDIR"
 
 
 class _EmotionEtRegressionModel(torch.nn.Module):
@@ -54,15 +55,59 @@ class EmotionEtFixationsPredictor:
     def _resolve_model_dir(self, model_id):
         candidate = Path(model_id).expanduser()
         if candidate.exists():
-            return candidate
+            return self._select_model_dir(candidate)
         if snapshot_download is None:
-            raise ImportError("huggingface_hub is required to download skboy/emotion_et_model.")
+            raise ImportError("huggingface_hub is required to download an emotion ET model.")
         local_files_only = os.environ.get("EMOTION_ET_LOCAL_FILES_ONLY", "").lower() in {
             "1",
             "true",
             "yes",
         }
-        return Path(snapshot_download(model_id, local_files_only=local_files_only))
+        snapshot_dir = Path(snapshot_download(model_id, local_files_only=local_files_only))
+        return self._select_model_dir(snapshot_dir)
+
+    def _select_model_dir(self, base_dir):
+        subdir = os.environ.get(MODEL_SUBDIR_ENV)
+        if subdir:
+            model_dir = base_dir / subdir
+            if not self._is_model_dir(model_dir):
+                raise FileNotFoundError(
+                    f"{MODEL_SUBDIR_ENV}={subdir} does not point to a valid emotion ET model under {base_dir}."
+                )
+            return model_dir
+
+        if self._is_model_dir(base_dir):
+            return base_dir
+
+        candidates = sorted(
+            {
+                path.parent
+                for path in base_dir.rglob("config.json")
+                if self._is_model_dir(path.parent)
+            },
+            key=lambda path: str(path.relative_to(base_dir)),
+        )
+        if len(candidates) == 1:
+            return candidates[0]
+
+        named_weight_matches = [path for path in candidates if (path / self.weight_name).exists()]
+        if len(named_weight_matches) == 1:
+            return named_weight_matches[0]
+
+        if candidates:
+            candidate_list = ", ".join(str(path.relative_to(base_dir)) for path in candidates)
+            raise FileNotFoundError(
+                f"Multiple emotion ET model directories found under {base_dir}: {candidate_list}. "
+                f"Set {MODEL_SUBDIR_ENV} to choose one."
+            )
+        raise FileNotFoundError(
+            f"No emotion ET model directory found under {base_dir}. Expected config.json and one .safetensors file."
+        )
+
+    @staticmethod
+    def _is_model_dir(path):
+        path = Path(path)
+        return path.is_dir() and (path / "config.json").exists() and any(path.glob("*.safetensors"))
 
     def _load_weights(self):
         weight_path = self.model_dir / self.weight_name

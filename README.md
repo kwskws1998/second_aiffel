@@ -258,7 +258,10 @@ It expects two arguments:
 
 The default gaze predictor is still ET2. To switch only the ET predictor to the
 emotion-specific model hosted on Hugging Face, set `--et-model-type emotion_et`
-and pass the repo id with `--et-model-id`.
+and pass the repo id with `--et-model-id`. The default emotion ET Hub repo is
+`skboy/emotion_et_2nd_model`. If a repo snapshot contains the exported model
+inside a single subdirectory, the loader resolves that model directory
+automatically.
 
 TRT-only DistilBERT MSE run on the no-IEMOCAP split:
 
@@ -267,7 +270,7 @@ python train_model.py distilbert mse \
   --data-dir data_no_iemocap \
   --gaze-fusion concat \
   --et-model-type emotion_et \
-  --et-model-id skboy/emotion_et_model \
+  --et-model-id skboy/emotion_et_2nd_model \
   --features-used 0,0,0,1,0 \
   --fp-dropout 0.1,0.3 \
   --batch-size 16 \
@@ -279,3 +282,8 @@ python train_model.py distilbert mse \
 
 Feature flag order is `nFix,FFD,GPT,TRT,fixProp`. The hyphenated alias
 `emotion-et` is also accepted.
+Set `EMOTION_ET_LOCAL_FILES_ONLY=1` when you want the wrapper to fail fast
+instead of trying to download from Hugging Face. Set
+`EMOTION_ET_MODEL_SUBDIR=<subdir>` only when one repo snapshot contains multiple
+exported emotion ET model directories and the loader cannot choose
+unambiguously.
